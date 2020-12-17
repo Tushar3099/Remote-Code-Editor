@@ -3,7 +3,7 @@ import {execFile,spawn,exec} from 'child_process'
 import { inherits } from "util";
 
 class CodeService {
-    execute(code,lang){
+    async execute(code,lang){
         try {
             let path = 'sample';
             if(lang=='javascript'){
@@ -19,32 +19,71 @@ class CodeService {
             })
     
             if(lang=='javascript'){
-                let output = '';
-                function execute(command,callback){
-                    const child = exec(command, function(error, stdout, stderr){
-                        console.log('This is stdout', stdout)
-                        callback(stdout); 
-                    });
+                function execute(command){
+                    return new Promise((resolve,reject)=>{
+                        const child = spawn(command,{shell : true});
+                        child.stdout.on('data',data=>{
+                            resolve(data);
+                        })
+
+                        child.stderr.on('data',data=>{
+                            reject(data.toString());
+                        })
+                        
+                        child.on('error',(err)=>{
+                            console.log('This is child ERROR : ',err)
+                            throw { status : '404',message : err};
+                        })
+
+                        child.on('exit',(code,signal)=>{
+                            console.log('code : ',code );
+                            console.log('signal : ',signal );
+                        })
+                        
+                    })
                 }
-                // const child = exec('node sample.js',{shell : true,stdio : 'inherit'})
-
-                execute('node sample.js',(data)=>{
-                    output = data;
-                    console.log(output); 
-                })
                 
-                console.log('OUTPUT 1', output);
-                setTimeout(()=>{
-                    console.log('OUTPUT 2', output);
-                },1000)
-                
-                return output;
+                try {                    
+                    const output = await execute('node sample.js')
+                    console.log('This is the output of the code : ',output.toString()); 
+                    if(output);
+                    return output.toString();
+                } catch (error) {
+                    throw {status : '404',message : error};
+                }
+            }
+            else if(lang=='c++'){
+                const execute = ()=>{
+                    return new Promise((resolve,reject)=>{
+                        const child1 = exec('g++ -o run sample.cpp',(err,stdout,stderr)=>{
+                            if(stdout){
+                                const child2 = exec('./run',(err,stdout,stderr)=>{
+                                    if(stdout){
+                                        resolve(stdout);
+                                    }
+                                    else if(stderr){
+                                        reject(stderr);
+                                    }
+                                })
+                            }
+                            else if(stderr){
+                                reject(stderr);
+                            }
+                        });
+                    })
+                }
+                try {
+                    const output = await execute();
+                    if(output)
+                    return output.toString();
+                } catch (error) {
+                    throw {status :'404',message : error}
+                }
 
-                // return 'JAVASCRIPT'
 
             }
             else{
-                return 'C++ output'
+                throw {status : '404', message : 'Invalid language'}
             }
         } catch (error) {
             throw error;

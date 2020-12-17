@@ -1,1 +1,1 @@
-console.log('Hello World')
+var a=2; a++; a++ console.log(a);
