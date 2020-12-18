@@ -1,5 +1,5 @@
-import codeRouter from './api/controllers/code/router';
+import codeRouter from "./api/controllers/code/router";
 
 export default function routes(app) {
-  app.use('/code', codeRouter);
+  app.use("/code", codeRouter);
 }
