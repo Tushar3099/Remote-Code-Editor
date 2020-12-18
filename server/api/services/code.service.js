@@ -1,5 +1,6 @@
 import fs from "fs";
 import { execFile, spawn, exec } from "child_process";
+const FILE_PATH = `./executable`;
 
 class CodeService {
   async execute(code, lang) {
@@ -14,22 +15,36 @@ class CodeService {
           break;
         }
         case "c++": {
-          output = await this.execChild(`g++ -o run ${path} && run`);
+          output = await this.execChild(
+            `g++ -o ${FILE_PATH}/run ${path} && cd ${FILE_PATH} && run && cd ..`
+          );
+          //   console.log(`${FILE_PATH}/run.exe`);
+          setTimeout(() => {
+            fs.unlink(`${FILE_PATH}/run.exe`, (err) => {
+              if (err) throw err;
+            });
+          }, 100);
+          break;
+        }
+        case "python": {
+          output = await this.execChild(`python ${path}`);
           break;
         }
         default: {
           throw "Invalid language";
         }
       }
+      fs.unlink(path, (err) => {
+        if (err) throw err;
+      });
       if (output) return output.toString();
-      fs.unlink(path);
     } catch (error) {
       throw { status: "404", message: error };
     }
   }
 
   async writeFile(code, lang) {
-    let path = "sample";
+    let path = `${FILE_PATH}/sample`;
     switch (lang) {
       case "javascript": {
         path += ".js";
@@ -37,6 +52,10 @@ class CodeService {
       }
       case "c++": {
         path += ".cpp";
+        break;
+      }
+      case "python": {
+        path += ".py";
         break;
       }
       default: {
