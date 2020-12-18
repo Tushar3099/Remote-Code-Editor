@@ -1,1 +1,1 @@
-var a=2; a++; a++ console.log(a);
+console.lg('run javascript')

@@ -5,78 +5,70 @@ class CodeService {
   async execute(code, lang) {
     try {
       //writing the file
-      let path = "sample";
-      if (lang == "javascript") {
-        path += ".js";
-      } else if (lang == "c++") {
-        path += ".cpp";
+      const path = await this.writeFile(code, lang);
+      //executing the file
+      let output = "";
+      switch (lang) {
+        case "javascript": {
+          output = await this.execChild(`node ${path}`);
+          break;
+        }
+        case "c++": {
+          output = await this.execChild(`g++ -o run ${path} && run`);
+          break;
+        }
+        default: {
+          throw "Invalid language";
+        }
       }
-      fs.writeFile(path, code, (err) => {
-        if (err) console.log("This is a ERROR", err);
+      if (output) return output.toString();
+      fs.unlink(path);
+    } catch (error) {
+      throw { status: "404", message: error };
+    }
+  }
+
+  async writeFile(code, lang) {
+    let path = "sample";
+    switch (lang) {
+      case "javascript": {
+        path += ".js";
+        break;
+      }
+      case "c++": {
+        path += ".cpp";
+        break;
+      }
+      default: {
+      }
+    }
+    fs.writeFile(path, code, (err) => {
+      if (err) throw { message: err };
+    });
+    return path;
+  }
+
+  async execChild(command) {
+    // console.log(command);
+    return new Promise((resolve, reject) => {
+      const child = spawn(command, { shell: true });
+      child.stdout.on("data", (data) => {
+        resolve(data);
       });
 
-      //executing the file
-      if (lang == "javascript") {
-        function execute(command) {
-          return new Promise((resolve, reject) => {
-            const child = spawn(command, { shell: true });
-            child.stdout.on("data", (data) => {
-              resolve(data);
-            });
+      child.stderr.on("data", (data) => {
+        reject(data.toString());
+      });
 
-            child.stderr.on("data", (data) => {
-              reject(data.toString());
-            });
+      child.on("error", (err) => {
+        throw { status: "404", message: err };
+      });
 
-            child.on("error", (err) => {
-              throw { status: "404", message: err };
-            });
-
-            child.on("exit", (code, signal) => {
-              console.log("code : ", code);
-              console.log("signal : ", signal);
-            });
-          });
-        }
-
-        try {
-          const output = await execute("node sample.js");
-          if (output) return output.toString();
-        } catch (error) {
-          throw { status: "404", message: error };
-        }
-      } else if (lang == "c++") {
-        const execute = () => {
-          return new Promise((resolve, reject) => {
-            const child1 = exec(
-              "g++ -o run sample.cpp",
-              (err, stdout, stderr) => {
-                if (stderr) {
-                  reject(stderr);
-                }
-                const child2 = exec("run", (err, stdout, stderr) => {
-                  if (stderr) {
-                    reject(stderr);
-                  }
-                  resolve(stdout);
-                });
-              }
-            );
-          });
-        };
-        try {
-          const output = await execute();
-          if (output) return output.toString();
-        } catch (error) {
-          console.log(error);
-          throw { status: "404", message: error };
-        }
-      } else {
-        throw { status: "404", message: "Invalid language" };
-      }
-    } catch (error) {
-      throw error;
-    }
+      child.on("exit", (code, signal) => {
+        console.log("code : ", code);
+        console.log("signal : ", signal);
+      });
+    });
   }
 }
 
